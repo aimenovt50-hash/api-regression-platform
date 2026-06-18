@@ -1,0 +1,11 @@
+name: microservices-platform
+timeout_seconds: 15
+retry:
+  max_attempts: 3
+  backoff_factor: 0.5
+services:
+  auth: /auth
+  users: /users
+  orders: /orders
+  payments: /payments
+  notifications: /notifications

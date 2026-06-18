@@ -1,0 +1,7 @@
+name: staging
+api_base_url: https://staging-api.platform.local
+database_url: postgresql://qa:qa@staging-db:5432/platform
+contract_path: contracts/openapi.yaml
+credentials:
+  admin_email: admin@staging.platform.local
+  admin_password: StagingAdmin123!

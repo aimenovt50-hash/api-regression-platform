@@ -1,0 +1,7 @@
+name: local
+api_base_url: http://127.0.0.1:8080
+database_url: sqlite:///./platform.db
+contract_path: contracts/openapi.yaml
+credentials:
+  admin_email: admin@platform.local
+  admin_password: Admin123!
