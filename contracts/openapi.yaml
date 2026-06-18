@@ -1,0 +1,353 @@
+openapi: 3.0.3
+info:
+  title: Microservices Platform API
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /auth/register:
+    post:
+      summary: Register user
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthRegisterResponse"
+  /auth/login:
+    post:
+      summary: Login user
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLoginResponse"
+  /auth/me:
+    get:
+      summary: Current user profile
+      responses:
+        "200":
+          description: Profile returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+  /users:
+    get:
+      summary: List users
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      summary: Create user
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /users/{user_id}:
+    get:
+      summary: Get user
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      summary: Update user
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /orders:
+    get:
+      summary: List orders
+      responses:
+        "200":
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      summary: Create order
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+  /orders/{order_id}:
+    get:
+      summary: Get order
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Order found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+  /orders/{order_id}/status:
+    patch:
+      summary: Update order status
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderStatusResponse"
+  /payments:
+    post:
+      summary: Create payment
+      responses:
+        "201":
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+  /payments/{payment_id}:
+    get:
+      summary: Get payment
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+      responses:
+        "200":
+          description: Payment found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+  /payments/order/{order_id}:
+    get:
+      summary: Get payment by order
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Payment found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+  /notifications/user/{user_id}:
+    get:
+      summary: List user notifications
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Notifications list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+  /notifications:
+    post:
+      summary: Create notification
+      responses:
+        "201":
+          description: Notification created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+  /notifications/{notification_id}/read:
+    patch:
+      summary: Mark notification read
+      parameters:
+        - $ref: "#/components/parameters/NotificationId"
+      responses:
+        "200":
+          description: Notification updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+components:
+  parameters:
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    OrderId:
+      name: order_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    PaymentId:
+      name: payment_id
+      in: path
+      required: true
+      schema:
+        type: integer
+    NotificationId:
+      name: notification_id
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+    AuthRegisterResponse:
+      type: object
+      required: [user_id, email, name]
+      properties:
+        user_id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+    AuthLoginResponse:
+      type: object
+      required: [access_token, token_type, expires_in, user_id]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: integer
+        user_id:
+          type: integer
+    UserProfile:
+      type: object
+      required: [id, email, name, role, is_active]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        is_active:
+          type: boolean
+    User:
+      type: object
+      required: [id, email, name, role, is_active]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        is_active:
+          type: boolean
+    Order:
+      type: object
+      required: [id, user_id, status, total_amount, items]
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        status:
+          type: string
+        total_amount:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+    OrderItem:
+      type: object
+      required: [product_id, quantity, price]
+      properties:
+        product_id:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+    OrderStatusResponse:
+      type: object
+      required: [id, status, total_amount]
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        total_amount:
+          type: number
+    Payment:
+      type: object
+      required: [id, order_id, amount, method, status]
+      properties:
+        id:
+          type: integer
+        order_id:
+          type: integer
+        amount:
+          type: number
+        method:
+          type: string
+        status:
+          type: string
+    Notification:
+      type: object
+      required: [id, user_id, channel, message, is_read]
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        channel:
+          type: string
+        message:
+          type: string
+        is_read:
+          type: boolean
