@@ -1,0 +1,31 @@
+[project]
+name = "api-regression-platform"
+version = "1.0.0"
+description = "API regression suite for microservices platform"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+addopts = "-v --strict-markers --alluredir=allure-results --reruns=1 --reruns-delay=1"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+markers = [
+    "smoke: Critical API smoke checks.",
+    "regression: Full regression suite.",
+    "e2e: Cross-domain business flows.",
+    "auth: Authentication service tests.",
+    "users: Users service tests.",
+    "orders: Orders service tests.",
+    "payments: Payments service tests.",
+    "notifications: Notifications service tests.",
+    "contract: OpenAPI contract tests.",
+    "database: Database validation tests.",
+    "negative: Negative and security scenarios.",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
