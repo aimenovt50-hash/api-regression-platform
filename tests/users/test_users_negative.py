@@ -1,8 +1,6 @@
 import allure
 import pytest
 
-from src.data.factories.data_factory import DataFactory
-
 
 @pytest.mark.users
 @pytest.mark.negative

@@ -61,14 +61,22 @@ class HttpClient:
             self._attach_exchange(method, url, kwargs, response)
         return response
 
-    def _attach_exchange(self, method: str, url: str, kwargs: dict[str, Any], response: requests.Response) -> None:
+    def _attach_exchange(
+        self,
+        method: str,
+        url: str,
+        kwargs: dict[str, Any],
+        response: requests.Response,
+    ) -> None:
         request_body = kwargs.get("json") or kwargs.get("data")
+        payload = {
+            "method": method,
+            "url": url,
+            "body": request_body,
+            "status": response.status_code,
+        }
         allure.attach(
-            json.dumps(
-                {"method": method, "url": url, "body": request_body, "status": response.status_code},
-                indent=2,
-                default=str,
-            ),
+            json.dumps(payload, indent=2, default=str),
             name=f"{method} {url}",
             attachment_type=allure.attachment_type.JSON,
         )

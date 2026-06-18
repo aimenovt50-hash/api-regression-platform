@@ -32,7 +32,11 @@ def test_get_order(authenticated_clients, registered_user):
 @pytest.mark.orders
 @pytest.mark.database
 @allure.story("Update order status")
-def test_update_order_status_database_validation(authenticated_clients, db_validator, registered_user):
+def test_update_order_status_database_validation(
+    authenticated_clients,
+    db_validator,
+    registered_user,
+):
     order = assert_status(
         authenticated_clients["orders"].create_order(
             DataFactory.order(user_id=registered_user["user"]["user_id"])

@@ -35,7 +35,8 @@ class ContractValidator:
     def _resolve_schema(spec: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
         if "$ref" in schema:
             ref_name = schema["$ref"].split("/")[-1]
-            return ContractValidator._resolve_schema(spec, deepcopy(spec["components"]["schemas"][ref_name]))
+            ref_schema = spec["components"]["schemas"][ref_name]
+            return ContractValidator._resolve_schema(spec, deepcopy(ref_schema))
 
         resolved = deepcopy(schema)
         if "properties" in resolved:
@@ -48,7 +49,12 @@ class ContractValidator:
         return resolved
 
     @staticmethod
-    def get_response_schema(contract_path: Path, path: str, method: str, status_code: str = "200") -> dict[str, Any]:
+    def get_response_schema(
+        contract_path: Path,
+        path: str,
+        method: str,
+        status_code: str = "200",
+    ) -> dict[str, Any]:
         with contract_path.open(encoding="utf-8") as handle:
             spec = yaml.safe_load(handle)
         operation = spec["paths"][path][method.lower()]
@@ -57,6 +63,12 @@ class ContractValidator:
         return ContractValidator._resolve_schema(spec, content["schema"])
 
     @staticmethod
-    def validate_response(contract_path: Path, path: str, method: str, payload: Any, status_code: str = "200") -> None:
+    def validate_response(
+        contract_path: Path,
+        path: str,
+        method: str,
+        payload: Any,
+        status_code: str = "200",
+    ) -> None:
         schema = ContractValidator.get_response_schema(contract_path, path, method, status_code)
         Draft202012Validator(schema).validate(payload)

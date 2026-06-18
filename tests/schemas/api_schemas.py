@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from src.config.settings import PROJECT_ROOT
 from src.validation.validators import ContractValidator
 

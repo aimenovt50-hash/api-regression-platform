@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
@@ -13,6 +13,8 @@ from app.database import Notification, Order, OrderItem, Payment, User, get_db, 
 app = FastAPI(title="Microservices Platform API", version="1.0.0")
 
 TOKENS: dict[str, int] = {}
+
+DbSession = Annotated[Session, Depends(get_db)]
 
 
 def hash_password(password: str) -> str:
@@ -25,7 +27,10 @@ def issue_token(user_id: int) -> str:
     return token
 
 
-def get_current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> User:
+def get_current_user(
+    db: DbSession,
+    authorization: Annotated[str | None, Header()] = None,
+) -> User:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
     token = authorization.removeprefix("Bearer ").strip()
@@ -36,6 +41,27 @@ def get_current_user(authorization: str | None = Header(default=None), db: Sessi
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive")
     return user
+
+
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def serialize_user(user: User) -> dict:
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "role": user.role,
+        "is_active": user.is_active,
+    }
+
+
+def serialize_order_item(item: OrderItem) -> dict:
+    return {
+        "product_id": item.product_id,
+        "quantity": item.quantity,
+        "price": item.price,
+    }
 
 
 class RegisterRequest(BaseModel):
@@ -99,10 +125,14 @@ def health():
 
 
 @app.post("/auth/register", status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+def register(payload: RegisterRequest, db: DbSession):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
-    user = User(email=payload.email, name=payload.name, password_hash=hash_password(payload.password))
+    user = User(
+        email=payload.email,
+        name=payload.name,
+        password_hash=hash_password(payload.password),
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -110,7 +140,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @app.post("/auth/login")
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, db: DbSession):
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or user.password_hash != hash_password(payload.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -124,7 +154,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
 
 @app.get("/auth/me")
-def auth_me(current_user: User = Depends(get_current_user)):
+def auth_me(current_user: CurrentUser):
     return {
         "id": current_user.id,
         "email": current_user.email,
@@ -135,7 +165,7 @@ def auth_me(current_user: User = Depends(get_current_user)):
 
 
 @app.get("/users")
-def list_users(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def list_users(db: DbSession, _: CurrentUser):
     users = db.query(User).all()
     return [
         {"id": u.id, "email": u.email, "name": u.name, "role": u.role, "is_active": u.is_active}
@@ -144,7 +174,7 @@ def list_users(db: Session = Depends(get_db), _: User = Depends(get_current_user
 
 
 @app.post("/users", status_code=status.HTTP_201_CREATED)
-def create_user(payload: UserCreateRequest, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def create_user(payload: UserCreateRequest, db: DbSession, _: CurrentUser):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=409, detail="Email already exists")
     user = User(
@@ -156,23 +186,23 @@ def create_user(payload: UserCreateRequest, db: Session = Depends(get_db), _: Us
     db.add(user)
     db.commit()
     db.refresh(user)
-    return {"id": user.id, "email": user.email, "name": user.name, "role": user.role, "is_active": user.is_active}
+    return serialize_user(user)
 
 
 @app.get("/users/{user_id}")
-def get_user(user_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def get_user(user_id: int, db: DbSession, _: CurrentUser):
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"id": user.id, "email": user.email, "name": user.name, "role": user.role, "is_active": user.is_active}
+    return serialize_user(user)
 
 
 @app.patch("/users/{user_id}")
 def update_user(
     user_id: int,
     payload: UserUpdateRequest,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    db: DbSession,
+    _: CurrentUser,
 ):
     user = db.get(User, user_id)
     if not user:
@@ -185,11 +215,11 @@ def update_user(
         user.is_active = payload.is_active
     db.commit()
     db.refresh(user)
-    return {"id": user.id, "email": user.email, "name": user.name, "role": user.role, "is_active": user.is_active}
+    return serialize_user(user)
 
 
 @app.get("/orders")
-def list_orders(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def list_orders(db: DbSession, _: CurrentUser):
     orders = db.query(Order).all()
     return [
         {
@@ -197,16 +227,14 @@ def list_orders(db: Session = Depends(get_db), _: User = Depends(get_current_use
             "user_id": o.user_id,
             "status": o.status,
             "total_amount": o.total_amount,
-            "items": [
-                {"product_id": i.product_id, "quantity": i.quantity, "price": i.price} for i in o.items
-            ],
+            "items": [serialize_order_item(i) for i in o.items],
         }
         for o in orders
     ]
 
 
 @app.post("/orders", status_code=status.HTTP_201_CREATED)
-def create_order(payload: OrderCreateRequest, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def create_order(payload: OrderCreateRequest, db: DbSession, _: CurrentUser):
     user = db.get(User, payload.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -230,14 +258,12 @@ def create_order(payload: OrderCreateRequest, db: Session = Depends(get_db), _: 
         "user_id": order.user_id,
         "status": order.status,
         "total_amount": order.total_amount,
-        "items": [
-            {"product_id": i.product_id, "quantity": i.quantity, "price": i.price} for i in order.items
-        ],
+        "items": [serialize_order_item(i) for i in order.items],
     }
 
 
 @app.get("/orders/{order_id}")
-def get_order(order_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def get_order(order_id: int, db: DbSession, _: CurrentUser):
     order = db.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -246,9 +272,7 @@ def get_order(order_id: int, db: Session = Depends(get_db), _: User = Depends(ge
         "user_id": order.user_id,
         "status": order.status,
         "total_amount": order.total_amount,
-        "items": [
-            {"product_id": i.product_id, "quantity": i.quantity, "price": i.price} for i in order.items
-        ],
+        "items": [serialize_order_item(i) for i in order.items],
     }
 
 
@@ -256,8 +280,8 @@ def get_order(order_id: int, db: Session = Depends(get_db), _: User = Depends(ge
 def update_order_status(
     order_id: int,
     payload: OrderStatusRequest,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    db: DbSession,
+    _: CurrentUser,
 ):
     order = db.get(Order, order_id)
     if not order:
@@ -269,13 +293,18 @@ def update_order_status(
 
 
 @app.post("/payments", status_code=status.HTTP_201_CREATED)
-def create_payment(payload: PaymentCreateRequest, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def create_payment(payload: PaymentCreateRequest, db: DbSession, _: CurrentUser):
     order = db.get(Order, payload.order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     if order.payment:
         raise HTTPException(status_code=409, detail="Payment already exists")
-    payment = Payment(order_id=payload.order_id, amount=payload.amount, method=payload.method, status="completed")
+    payment = Payment(
+        order_id=payload.order_id,
+        amount=payload.amount,
+        method=payload.method,
+        status="completed",
+    )
     order.status = "paid"
     db.add(payment)
     db.commit()
@@ -290,7 +319,7 @@ def create_payment(payload: PaymentCreateRequest, db: Session = Depends(get_db),
 
 
 @app.get("/payments/{payment_id}")
-def get_payment(payment_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def get_payment(payment_id: int, db: DbSession, _: CurrentUser):
     payment = db.get(Payment, payment_id)
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -304,7 +333,7 @@ def get_payment(payment_id: int, db: Session = Depends(get_db), _: User = Depend
 
 
 @app.get("/payments/order/{order_id}")
-def get_payment_by_order(order_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def get_payment_by_order(order_id: int, db: DbSession, _: CurrentUser):
     payment = db.query(Payment).filter(Payment.order_id == order_id).first()
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -318,7 +347,7 @@ def get_payment_by_order(order_id: int, db: Session = Depends(get_db), _: User =
 
 
 @app.get("/notifications/user/{user_id}")
-def list_notifications(user_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def list_notifications(user_id: int, db: DbSession, _: CurrentUser):
     notifications = db.query(Notification).filter(Notification.user_id == user_id).all()
     return [
         {
@@ -335,8 +364,8 @@ def list_notifications(user_id: int, db: Session = Depends(get_db), _: User = De
 @app.post("/notifications", status_code=status.HTTP_201_CREATED)
 def create_notification(
     payload: NotificationCreateRequest,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    db: DbSession,
+    _: CurrentUser,
 ):
     user = db.get(User, payload.user_id)
     if not user:
@@ -362,8 +391,8 @@ def create_notification(
 @app.patch("/notifications/{notification_id}/read")
 def mark_notification_read(
     notification_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    db: DbSession,
+    _: CurrentUser,
 ):
     notification = db.get(Notification, notification_id)
     if not notification:

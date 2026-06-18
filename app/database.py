@@ -39,8 +39,8 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
-    orders: Mapped[list["Order"]] = relationship(back_populates="user")
-    notifications: Mapped[list["Notification"]] = relationship(back_populates="user")
+    orders: Mapped[list[Order]] = relationship(back_populates="user")
+    notifications: Mapped[list[Notification]] = relationship(back_populates="user")
 
 
 class Order(Base):
@@ -53,8 +53,11 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     user: Mapped[User] = relationship(back_populates="orders")
-    items: Mapped[list["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan")
-    payment: Mapped["Payment | None"] = relationship(back_populates="order", uselist=False)
+    items: Mapped[list[OrderItem]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
+    payment: Mapped[Payment | None] = relationship(back_populates="order", uselist=False)
 
 
 class OrderItem(Base):

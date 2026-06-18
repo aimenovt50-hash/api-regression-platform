@@ -24,7 +24,8 @@ class DatabaseValidator:
             return dict(row) if row else None
 
     def user_exists(self, user_id: int) -> bool:
-        return self.fetch_one("SELECT id FROM users WHERE id = :user_id", user_id=user_id) is not None
+        row = self.fetch_one("SELECT id FROM users WHERE id = :user_id", user_id=user_id)
+        return row is not None
 
     def user_name(self, user_id: int) -> str | None:
         row = self.fetch_one("SELECT name FROM users WHERE id = :user_id", user_id=user_id)

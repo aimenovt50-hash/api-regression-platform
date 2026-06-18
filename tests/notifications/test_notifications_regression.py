@@ -28,7 +28,11 @@ def test_list_notifications(authenticated_clients, registered_user):
 @pytest.mark.notifications
 @pytest.mark.database
 @allure.story("Mark notification read")
-def test_mark_notification_read_database_validation(authenticated_clients, db_validator, registered_user):
+def test_mark_notification_read_database_validation(
+    authenticated_clients,
+    db_validator,
+    registered_user,
+):
     user_id = registered_user["user"]["user_id"]
     notification = assert_status(
         authenticated_clients["notifications"].create(DataFactory.notification(user_id=user_id)),
